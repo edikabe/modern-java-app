@@ -7,7 +7,7 @@ description: Compiler, tester et construire un projet Java Maven avec les outils
 
 ## Identifier le contexte
 
-- Lire les règles AGENTS.md applicables et suivre la langue du projet.
+- Lire les règles AGENTS.md applicables et suivre la langue du projet. Pour ce dépôt, lire aussi [la référence build/tests/Zed](../../references/build.md).
 - Repérer le pom.xml racine, les modules concernés, le Maven Wrapper et les tâches existantes (mise.toml, Makefile, CI). Ne pas supposer leurs chemins ou leur présence.
 - Déterminer les versions Java et Maven depuis le dépôt, les propriétés du compilateur, les toolchains et la CI. Ne pas imposer une version universelle.
 - Vérifier les modifications existantes avant toute édition ; les préserver.

@@ -3,6 +3,17 @@
 J'ai chopé un repo exemple de projet Spring sur lequel j'ai mis en place toute une chaine de tooling moderne.
 Peu importe que ce soit du Java ou autre...
 
+## Instructions pour les agents IA
+
+[AGENTS.md](AGENTS.md) contient le socle chargé dans le contexte : conventions, invariants métier, garde-fous et validation essentielle. Les consignes spécialisées sont lues uniquement selon la tâche :
+
+- [Build, tests, tâches mise, seed et Zed](.agents/references/build.md)
+- [Docker, Colima et PostgreSQL](.agents/references/docker.md)
+- [GitHub Actions](.agents/references/ci.md)
+- [Contrat REST, OpenAPI et Scalar](.agents/references/openapi.md)
+
+Les skills de `.agents/skills/` décrivent les procédures réutilisables et sont chargés à la demande. Lors d’une évolution, mettre à jour la référence concernée ; réserver `AGENTS.md` aux règles transversales et aux renvois conditionnels pour éviter de gonfler le contexte de chaque conversation.
+
 ## Configuration Java dans Zed
 
 `.zed/settings.json` active la synchronisation automatique de la configuration Maven par JDT LS (`java.configuration.updateBuildConfiguration = automatic`). Après modification de ces réglages, ouvrir un fichier Java et lancer `editor: restart language server` depuis la palette de commandes de Zed.

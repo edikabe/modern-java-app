@@ -7,7 +7,7 @@ description: Créer, vérifier ou diagnostiquer une image Docker Java et son lan
 
 ## Examiner avant de modifier
 
-- Lire AGENTS.md, la configuration de build, Dockerfile, Compose, .dockerignore et les tâches existantes lorsqu’ils sont présents.
+- Lire AGENTS.md, la configuration de build, Dockerfile, Compose, .dockerignore et les tâches existantes lorsqu’ils sont présents. Pour ce dépôt, lire aussi [la référence Docker/PostgreSQL](../../references/docker.md).
 - Identifier le JDK cible, le packaging, le port, les services externes et le stockage. Ne pas ajouter de base externe ou de persistance sans demande.
 - Vérifier la CLI Docker, le contexte actif, le moteur, Compose et Buildx selon le problème. Ne pas supposer Docker Desktop.
 - Sur macOS avec Colima, ne pas démarrer, arrêter ni changer de contexte sans nécessité. Ne pas arrêter les services des autres projets.
