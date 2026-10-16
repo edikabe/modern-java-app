@@ -3,7 +3,7 @@
 ## Contexte
 
 - Répondre en français et privilégier des modifications ciblées.
-- Application REST de gestion d’étudiants : Spring Boot **4.0.0**, Java **25**, Maven, Spring MVC, Spring Data JPA, H2, Lombok et Actuator.
+- Application REST de gestion d’étudiants et de cours : Spring Boot **4.0.0**, Java **25**, Maven, Spring MVC, Spring Data JPA, H2, Lombok et Actuator.
 - Malgré le nom du répertoire, ce projet n’utilise plus Spring Boot 2. Le `pom.xml` fait référence pour les versions et dépendances.
 - Les outils locaux sont gérés par `mise` (`mise.toml`). Exécuter les commandes depuis la racine du projet.
 
@@ -13,6 +13,8 @@
 - Package `student` : entité `Student`, repository JPA, contrôleur `StudentResource` et exception métier.
 - API : `GET /students`, `GET /students/{id}`, `POST /students`, `PUT /students/{id}`, `DELETE /students/{id}`.
 - Un numéro de passeport doit être unique. Conserver la contrainte `uk_student_passport` et la réponse HTTP **409** avec `ProblemDetail` en cas de doublon, à la création comme à la modification.
+- Package `course` : CRUD `/courses`, entité `Course`, repository, contrôleur et erreurs `ProblemDetail`. Champs `titre` et `code` obligatoires non blancs, `date` obligatoire au format `YYYY-MM-DD`, sans relation avec les étudiants.
+- Conserver l’unicité du code (`uk_course_code`) et HTTP 409 en création/modification. POST refuse un identifiant fourni ; PUT remplace les trois champs et utilise l’identifiant du chemin. GET/PUT/DELETE d’un cours absent renvoient 404. Tests dédiés : `CourseTests`.
 - Configuration : `src/main/resources/application.properties`. Garder l’entité JPA, `schema.sql` et `data.sql` cohérents lors des changements de modèle.
 - H2 fonctionne en mémoire : les données modifiées sont perdues à chaque redémarrage. Ne pas ajouter de persistance ou de base externe sans demande explicite.
 - Tests : `src/test/java/com/in28minutes/springboot/rest/example/`, notamment `StudentPassportTests` pour les conflits de passeport.
@@ -21,21 +23,21 @@
 
 Privilégier les tâches existantes plutôt que dupliquer les commandes :
 
-| Commande | Action |
-| --- | --- |
-| `mise install` | Installer les outils déclarés |
-| `mise tasks ls` | Lister les tâches disponibles |
-| `mise run compile` | Compiler les sources |
-| `mise run test` | Exécuter les tests Maven |
-| `mise run build` | Construire le JAR avec les tests (`mvn package`) |
-| `mise run verify` | Exécuter le cycle Maven jusqu’à `verify` |
-| `mise run clean` | Supprimer `target` |
-| `mise run rebuild` | Nettoyer puis reconstruire avec les tests |
-| `mise run start` | Démarrer Spring Boot en local |
-| `mise run deps` | Afficher l’arbre des dépendances |
-| `mise run seed` | Créer 10 étudiants via l’API déjà démarrée |
+| Commande                | Action                                                     |
+| ----------------------- | ---------------------------------------------------------- |
+| `mise install`          | Installer les outils déclarés                              |
+| `mise tasks ls`         | Lister les tâches disponibles                              |
+| `mise run compile`      | Compiler les sources                                       |
+| `mise run test`         | Exécuter les tests Maven                                   |
+| `mise run build`        | Construire le JAR avec les tests (`mvn package`)           |
+| `mise run verify`       | Exécuter le cycle Maven jusqu’à `verify`                   |
+| `mise run clean`        | Supprimer `target`                                         |
+| `mise run rebuild`      | Nettoyer puis reconstruire avec les tests                  |
+| `mise run start`        | Démarrer Spring Boot en local                              |
+| `mise run deps`         | Afficher l’arbre des dépendances                           |
+| `mise run seed`         | Créer 10 étudiants via l’API déjà démarrée                 |
 | `mise run docker:start` | Construire l’image et démarrer via Compose en arrière-plan |
-| `mise run docker:stop` | Arrêter et supprimer les conteneurs Compose du projet |
+| `mise run docker:stop`  | Arrêter et supprimer les conteneurs Compose du projet      |
 
 La tâche `seed` se trouve dans `mise/tasks/seed`, nécessite `curl` et accepte une URL en argument : `mise run seed -- http://localhost:8080`. Elle utilise des passeports fixes : une nouvelle exécution sur une base déjà alimentée peut échouer avec HTTP 409. Elle ne supprime pas les données existantes.
 

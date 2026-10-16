@@ -1,3 +1,8 @@
+# Modern Java App
+
+J'ai chopé un repo exemple de projet Spring sur lequel j'ai mis en place toute une chaine de tooling moderne.
+Peu importe que ce soit du Java ou autre...
+
 ## Lancer avec Docker
 
 Prérequis : Docker avec le plugin Docker Compose. Aucun JDK ni Maven local n’est nécessaire.
@@ -30,6 +35,49 @@ Pour utiliser Docker sans Compose :
 docker build -t spring-rest-service .
 docker run --rm -p 127.0.0.1:8080:8080 -e SPRING_H2_CONSOLE_ENABLED=false spring-rest-service
 ```
+
+## API des cours
+
+La ressource `Course` est disponible sur `/courses`, sans relation avec les étudiants. Son identifiant est généré par le serveur.
+
+| Champ JSON | Type            | Contraintes                                     |
+| ---------- | --------------- | ----------------------------------------------- |
+| `titre`    | Texte           | Obligatoire, non vide et non blanc              |
+| `code`     | Texte           | Obligatoire, non vide et non blanc, unique      |
+| `date`     | Date sans heure | Obligatoire, date valide au format `YYYY-MM-DD` |
+
+Les textes sont conservés tels quels (pas de normalisation). H2 conserve ces données uniquement en mémoire ; aucun cours n’est préchargé.
+
+| Route                  | Succès                              | Erreurs principales                                              |
+| ---------------------- | ----------------------------------- | ---------------------------------------------------------------- |
+| `GET /courses`         | 200, liste JSON                     |                                                                  |
+| `GET /courses/{id}`    | 200, objet JSON                     | 404 si absent                                                    |
+| `POST /courses`        | 201, en-tête `Location`, corps vide | 400 si invalide ou identifiant fourni ; 409 si code déjà utilisé |
+| `PUT /courses/{id}`    | 204, corps vide                     | 400 si invalide ; 404 si absent ; 409 si code déjà utilisé       |
+| `DELETE /courses/{id}` | 204, corps vide                     | 404 si absent                                                    |
+
+Les erreurs gérées utilisent `ProblemDetail`. PUT remplace les trois champs : aucun ne peut être omis. L’identifiant du chemin prévaut sur celui du corps. Un cours peut conserver son propre code lors d’une modification.
+
+Application démarrée, créer un cours :
+
+```sh
+curl -i -X POST http://localhost:8080/courses \
+  -H 'Content-Type: application/json' \
+  -d '{"titre":"Introduction à Java","code":"JAVA-101","date":"2026-10-16"}'
+curl http://localhost:8080/courses
+```
+
+Utiliser l’identifiant renvoyé dans `Location` pour les opérations suivantes (ici `1` à titre d’exemple) :
+
+```sh
+curl http://localhost:8080/courses/1
+curl -i -X PUT http://localhost:8080/courses/1 \
+  -H 'Content-Type: application/json' \
+  -d '{"titre":"Java avancé","code":"JAVA-101","date":"2026-11-01"}'
+curl -i -X DELETE http://localhost:8080/courses/1
+```
+
+Validation ciblée : `mise exec -- mvn -Dtest=CourseTests test`. Validation complète : `mise run verify`.
 
 ## Keep Learning Every Day
 
