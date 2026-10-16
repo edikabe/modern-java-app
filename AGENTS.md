@@ -3,9 +3,10 @@
 ## Contexte
 
 - Répondre en français et privilégier des modifications ciblées.
-- Application REST de gestion d’étudiants et de cours : Spring Boot **4.0.0**, Java **25**, Maven, Spring MVC, Spring Data JPA, H2, Lombok et Actuator.
+- Application REST de gestion d’étudiants et de cours : Spring Boot **4.0.0**, Java **25**, Maven, Spring MVC, Spring Data JPA, H2 en local/tests, PostgreSQL avec Compose, Lombok et Actuator.
 - Malgré le nom du répertoire, ce projet n’utilise plus Spring Boot 2. Le `pom.xml` fait référence pour les versions et dépendances.
 - Les outils locaux sont gérés par `mise` (`mise.toml`). Exécuter les commandes depuis la racine du projet.
+- Zed : `.zed/settings.json` active la synchronisation Maven de JDT LS via `initialization_options.settings.java.configuration.updateBuildConfiguration = automatic`. Après modification, redémarrer le serveur Java depuis Zed ; un build Maven en terminal ne resynchronise pas à lui seul le modèle de l’éditeur.
 
 ## Structure et règles métier
 
@@ -16,8 +17,11 @@
 - Package `course` : CRUD `/courses`, entité `Course`, repository, contrôleur et erreurs `ProblemDetail`. Champs `titre` et `code` obligatoires non blancs, `date` obligatoire au format `YYYY-MM-DD`, sans relation avec les étudiants.
 - Conserver l’unicité du code (`uk_course_code`) et HTTP 409 en création/modification. POST refuse un identifiant fourni ; PUT remplace les trois champs et utilise l’identifiant du chemin. GET/PUT/DELETE d’un cours absent renvoient 404. Tests dédiés : `CourseTests`.
 - Configuration : `src/main/resources/application.properties`. Garder l’entité JPA, `schema.sql` et `data.sql` cohérents lors des changements de modèle.
-- H2 fonctionne en mémoire : les données modifiées sont perdues à chaque redémarrage. Ne pas ajouter de persistance ou de base externe sans demande explicite.
+- H2 reste la base par défaut en local et dans les tests, en mémoire : les données modifiées sont perdues à chaque redémarrage. Compose active le profil `postgres` (`application-postgres.properties`) avec PostgreSQL 17 et un volume persistant. Ne pas basculer les tests ou le lancement local vers PostgreSQL sans demande.
+- Le profil `postgres` désactive la console H2 et les scripts SQL H2, et utilise `ddl-auto=update` pour le développement local : la base démarre vide, sans données de démonstration. Prévoir des migrations versionnées pour la production ; conserver les contraintes d’unicité dans les entités.
 - Tests : `src/test/java/com/in28minutes/springboot/rest/example/`, notamment `StudentPassportTests` pour les conflits de passeport.
+- Documentation API : Springdoc 3.0.x génère OpenAPI sur `/v3/api-docs` et `/v3/api-docs.yaml` ; Scalar fournit l’interface sur `/docs`, sans Swagger UI. JavaScript embarqué, télémétrie et polices distantes désactivées. Conserver les annotations de contrat et `OpenApiTests` cohérents avec les endpoints, sans modifier leur comportement pour la documentation.
+- `OpenApiConfiguration` importe explicitement l’auto-configuration Scalar : Springdoc 3.0 la filtre par défaut. Ne pas remplacer sans vérification par son starter Scalar, qui en 3.0.3 active aussi la confiance aux en-têtes `Forwarded`. Pour désactiver la documentation, définir `springdoc.api-docs.enabled=false` et `scalar.enabled=false`. Aucun export statique n’est généré par le build.
 
 ## Commandes usuelles
 
@@ -59,10 +63,12 @@ La tâche `seed` se trouve dans `mise/tasks/seed`, nécessite `curl` et accepte 
 - `docker compose up --build -d` construit déjà l’image : pas besoin d’un `docker build` séparé avant `mise run docker:start`.
 - Le `Dockerfile` utilise Maven/Java 25 pour exécuter `verify`, un cache BuildKit pour Maven, puis une image JRE 25 avec un utilisateur non-root.
 - `.dockerignore` limite le contexte à `pom.xml` et `src` ; l’adapter si le build nécessite de nouveaux fichiers.
-- Compose publie uniquement `127.0.0.1:8080` et désactive la console H2. Ne pas élargir l’exposition réseau sans demande.
+- Compose publie uniquement `127.0.0.1:8080` et désactive la console H2. PostgreSQL n’a aucun port publié ; l’application attend son healthcheck. Ne pas élargir l’exposition réseau sans demande.
+- Avant Compose, copier `.env.example` vers `.env` et renseigner `POSTGRES_PASSWORD` (obligatoire). `.env` est ignoré par Git et exclu de l’image. Changer cette variable ne modifie pas le mot de passe d’une base déjà initialisée.
+- Le volume `postgres-data` conserve la base. Ne jamais exécuter `down -v` ni supprimer le volume sans demande explicite.
 - Logs : `docker compose logs -f app`.
 - Vérification manuelle : `curl http://localhost:8080/actuator/health` et `curl http://localhost:8080/students`.
-- `docker:stop` exécute `docker compose down` : l’image est conservée et Colima reste démarré.
+- `docker:stop` exécute `docker compose down` : l’image et le volume PostgreSQL sont conservés, Colima reste démarré.
 - Ne pas lancer simultanément l’application locale et Compose sur le même port 8080.
 
 ## Conventions de modification et validation
@@ -72,7 +78,8 @@ La tâche `seed` se trouve dans `mise/tasks/seed`, nécessite `curl` et accepte 
 - Préserver les modifications utilisateur ; ne pas créer de commit ni de branche sans demande.
 - Ne pas modifier les artefacts générés dans `target/` ni ajouter de secrets au dépôt ou aux images.
 - Ajouter ou adapter les tests lors d’un changement de comportement, notamment pour les contraintes de données et les statuts HTTP.
-- Annoter les classes de tests d’intégration avec `@Tag("integration")` (contexte Spring, base de données ou serveur HTTP). Les tests unitaires ne portent pas ce tag. Les trois classes actuelles sont des tests d’intégration ; la tâche `test:unit` n’exécute donc aucun test tant qu’aucun test unitaire n’est ajouté.
+- Annoter les classes de tests d’intégration avec `@Tag("integration")` (contexte Spring, base de données ou serveur HTTP). Les tests unitaires ne portent pas ce tag. Les cinq classes actuelles sont des tests d’intégration ; la tâche `test:unit` n’exécute donc aucun test tant qu’aucun test unitaire n’est ajouté.
+- `PostgresProfileTests` vérifie le profil `postgres` sur H2 en mode PostgreSQL, sans service externe. Cela ne remplace pas une vérification réelle via Compose (CRUD, conflits HTTP 409 et persistance après redémarrage).
 - Les tâches `test:unit` et `test:integration` filtrent les tags JUnit via Maven Surefire (`excludedGroups` / `groups`). `test`, `build`, `rebuild` et `verify` conservent tous les tests par défaut.
 - Pour un test ciblé : `mise exec -- mvn -Dtest=StudentPassportTests test`. Pour une validation complète : `mise run verify`.
 - Après modification de `mise.toml`, vérifier avec `mise tasks ls`. Après modification de Compose, utiliser `docker compose config --quiet` ; cela ne valide pas la construction ni le démarrage de l’image.

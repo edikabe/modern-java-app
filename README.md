@@ -3,6 +3,12 @@
 J'ai chopé un repo exemple de projet Spring sur lequel j'ai mis en place toute une chaine de tooling moderne.
 Peu importe que ce soit du Java ou autre...
 
+## Configuration Java dans Zed
+
+`.zed/settings.json` active la synchronisation automatique de la configuration Maven par JDT LS (`java.configuration.updateBuildConfiguration = automatic`). Après modification de ces réglages, ouvrir un fichier Java et lancer `editor: restart language server` depuis la palette de commandes de Zed.
+
+Si l’avertissement « Project configuration is not up-to-date with pom.xml, requires an update. » persiste, utiliser l’action de code proposée sur l’avertissement dans `pom.xml` pour mettre à jour la configuration du projet.
+
 ## Exécuter les tests
 
 Depuis la racine du projet, avec les outils Java et Maven gérés par `mise` :
@@ -15,7 +21,7 @@ Depuis la racine du projet, avec les outils Java et Maven gérés par `mise` :
 
 Les tests d’intégration portent l’annotation JUnit `@Tag("integration")` au niveau de la classe. Les tests unitaires ne portent pas ce tag. Ajouter ce tag à toute nouvelle classe de tests démarrant un contexte Spring ou utilisant une base de données ou un serveur HTTP.
 
-Les trois classes actuelles (`SpringBoot2RestServiceApplicationTests`, `StudentPassportTests` et `CourseTests`) sont des tests d’intégration : `test:unit` n’exécute donc aucun test pour le moment. Les filtres sélectionnent les tests à exécuter, mais Maven compile toujours l’ensemble des sources de test.
+Les cinq classes actuelles (`SpringBoot2RestServiceApplicationTests`, `StudentPassportTests`, `CourseTests`, `OpenApiTests` et `PostgresProfileTests`) sont des tests d’intégration : `test:unit` n’exécute donc aucun test pour le moment. Les filtres sélectionnent les tests à exécuter, mais Maven compile toujours l’ensemble des sources de test.
 
 `mise run build`, `mise run rebuild` et `mise run verify` continuent d’exécuter tous les tests par défaut. Pour cibler une classe : `mise exec -- mvn -Dtest=CourseTests test`.
 
@@ -35,11 +41,17 @@ GitHub Actions doit être activé sur le dépôt et les runners hébergés GitHu
 
 ## Lancer avec Docker
 
-Prérequis : Docker avec le plugin Docker Compose. Aucun JDK ni Maven local n’est nécessaire.
+Prérequis : Docker avec le plugin Docker Compose (avec Colima sur macOS, démarrer le moteur si nécessaire). Aucun JDK ni Maven local n’est nécessaire.
+
+Au premier lancement, copier `.env.example` vers `.env`, puis renseigner `POSTGRES_PASSWORD` avec un mot de passe local non vide. `.env` est ignoré par Git et exclu du contexte de construction Docker ; ne pas le committer.
 
 ```sh
+cp .env.example .env
+# Renseigner POSTGRES_PASSWORD dans .env avant la commande suivante.
 docker compose up --build -d
 ```
+
+La tâche `mise run docker:start` exécute la même commande Compose.
 
 La construction utilise Maven et Java 25, exécute les tests, puis copie uniquement le JAR dans une image Java d’exécution avec un utilisateur non-root. Le premier build nécessite un accès Internet pour télécharger les images et les dépendances Maven.
 
@@ -57,14 +69,55 @@ docker compose logs -f app
 docker compose down
 ```
 
-La base H2 est en mémoire : les modifications des données sont perdues à chaque redémarrage. Aucun service de base de données ni volume n’est nécessaire. La console H2 est désactivée dans Compose.
+Compose démarre **PostgreSQL 17** et attend son contrôle de santé avant de lancer l’application avec le profil Spring `postgres`. La connexion utilise `postgres:5432/students`, l’utilisateur `students` et le mot de passe de `.env`. Le port PostgreSQL n’est pas publié sur l’hôte ; seule l’API est exposée sur `127.0.0.1:8080`. La console H2 est désactivée.
 
-Pour utiliser Docker sans Compose :
+- Le volume nommé `postgres-data` conserve les données après un redémarrage, une reconstruction de l’application ou `docker compose down` (`mise run docker:stop`). **Ne pas utiliser `docker compose down -v` sauf pour effacer volontairement la base.**
+- Au premier lancement, la base est vide : les scripts H2 `schema.sql` et `data.sql` ne sont pas exécutés. Pour ajouter des étudiants de démonstration après démarrage : `mise run seed`. Les anciennes données H2 ne sont pas migrées.
+- `src/main/resources/application-postgres.properties` utilise `spring.jpa.hibernate.ddl-auto=update` pour créer/adapter les tables à partir des entités, avec leurs contraintes d’unicité. Ce choix convient au développement local ; utiliser des migrations versionnées avant une mise en production ou une évolution complexe du schéma.
+- Le mot de passe PostgreSQL est initialisé à la création du volume. Modifier `.env` seul ne change pas celui d’une base existante : effectuer aussi la rotation côté PostgreSQL, sans supprimer le volume si les données doivent être conservées.
+- Les tests Maven et `mise run start` continuent d’utiliser **H2 en mémoire**, sans nécessiter PostgreSQL. Leurs données sont perdues à l’arrêt. `PostgresProfileTests` vérifie la configuration du profil et le schéma généré sur H2 en mode PostgreSQL ; ce n’est pas un test sur un serveur PostgreSQL réel.
+
+Pour consulter la base depuis son conteneur :
+
+```sh
+docker compose exec postgres psql -U students -d students
+```
+
+Pour utiliser Docker sans Compose, avec H2 en mémoire :
 
 ```sh
 docker build -t spring-rest-service .
 docker run --rm -p 127.0.0.1:8080:8080 -e SPRING_H2_CONSOLE_ENABLED=false spring-rest-service
 ```
+
+## Documentation OpenAPI et Scalar
+
+La spécification **OpenAPI 3.1** est générée automatiquement à l’exécution depuis les contrôleurs et les modèles par `springdoc-openapi` **3.0.3** (branche compatible avec Spring Boot 4.0). L’interface interactive est **Scalar 0.5.55**, sans Swagger UI.
+
+Démarrer l’application avec `mise run start` ou `mise run docker:start` (pas les deux simultanément), puis ouvrir :
+
+| Adresse                                                                          | Contenu                                         |
+| -------------------------------------------------------------------------------- | ----------------------------------------------- |
+| [http://localhost:8080/docs](http://localhost:8080/docs)                         | Documentation interactive Scalar et client HTTP |
+| [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)           | Spécification OpenAPI JSON                      |
+| [http://localhost:8080/v3/api-docs.yaml](http://localhost:8080/v3/api-docs.yaml) | Spécification OpenAPI YAML                      |
+
+Les dix opérations de `/students` et `/courses` sont documentées avec les modèles, les contraintes des cours, les réponses sans corps et les conflits d’unicité HTTP 409. Les routes techniques (Actuator, H2 et documentation) ne sont pas incluses. Les annotations `io.swagger.v3.oas.annotations` décrivent le contrat OpenAPI ; elles n’installent pas Swagger UI et ne changent pas le comportement des endpoints.
+
+Le JavaScript Scalar est embarqué dans le JAR et servi par l’application, sans CDN. La télémétrie et les polices distantes par défaut sont désactivées. Aucun compte ni clé API n’est nécessaire. Le client HTTP intégré appelle réellement l’API : les POST, PUT et DELETE modifient les données de la base active (PostgreSQL persistante avec Compose, H2 en mémoire en local).
+
+Pour exporter la spécification, avec l’application déjà démarrée :
+
+```sh
+curl --fail --silent --show-error http://localhost:8080/v3/api-docs -o openapi.json
+curl --fail --silent --show-error http://localhost:8080/v3/api-docs.yaml -o openapi.yaml
+```
+
+La génération est dynamique : le build ne produit pas de fichier OpenAPI statique. Les exports sont des instantanés à régénérer après une évolution de l’API.
+
+Configuration dans `src/main/resources/application.properties`. Pour désactiver la documentation dans un environnement, définir **les deux** propriétés `springdoc.api-docs.enabled=false` et `scalar.enabled=false` (ou les variables `SPRINGDOC_API_DOCS_ENABLED=false` et `SCALAR_ENABLED=false`). La documentation est accessible sans authentification, comme l’API ; protéger ou désactiver ces routes avant une exposition publique.
+
+`OpenApiTests` vérifie les routes et modèles générés, les statuts HTTP documentés, le YAML, la page Scalar et son bundle JavaScript local. Test ciblé : `mise exec -- mvn -Dtest=OpenApiTests test`.
 
 ## API des cours
 
