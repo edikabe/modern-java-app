@@ -1,0 +1,358 @@
+## Lancer avec Docker
+
+Prérequis : Docker avec le plugin Docker Compose. Aucun JDK ni Maven local n’est nécessaire.
+
+```sh
+docker compose up --build -d
+```
+
+La construction utilise Maven et Java 25, exécute les tests, puis copie uniquement le JAR dans une image Java d’exécution avec un utilisateur non-root. Le premier build nécessite un accès Internet pour télécharger les images et les dépendances Maven.
+
+L’API est accessible sur `http://localhost:8080` (port publié uniquement sur la machine locale) :
+
+```sh
+curl http://localhost:8080/actuator/health
+curl http://localhost:8080/students
+```
+
+Consulter les logs et arrêter l’application :
+
+```sh
+docker compose logs -f app
+docker compose down
+```
+
+La base H2 est en mémoire : les modifications des données sont perdues à chaque redémarrage. Aucun service de base de données ni volume n’est nécessaire. La console H2 est désactivée dans Compose.
+
+Pour utiliser Docker sans Compose :
+
+```sh
+docker build -t spring-rest-service .
+docker run --rm -p 127.0.0.1:8080:8080 -e SPRING_H2_CONSOLE_ENABLED=false spring-rest-service
+```
+
+## Keep Learning Every Day
+
+- **1:** [FOLLOW](https://links.in28minutes.com/lin) Ranga on LinkedIn
+
+## Check Out Our Amazing ROADMAPS
+
+- **1:** [AWS Roadmap](https://github.com/in28minutes/roadmaps/blob/main/README.md#aws-roadmap)
+- **2:** [Azure Roadmap](https://github.com/in28minutes/roadmaps/blob/main/README.md#azure-roadmap)
+- **3:** [Google Cloud Roadmap](https://github.com/in28minutes/roadmaps/blob/main/README.md#google-cloud-roadmap)
+- **4:** [Cloud Beginner Roadmap](https://github.com/in28minutes/roadmaps/blob/main/README.md#cloud-beginner-roadmap)
+- **5:** [DevOps Roadmap](https://github.com/in28minutes/roadmaps/blob/main/README.md#devops-roadmap)
+- **6:** [Java Full Stack Roadmap](https://github.com/in28minutes/roadmaps/blob/main/README.md#java-full-stack-roadmap)
+- **7:** [Java Microservices Roadmap](https://github.com/in28minutes/roadmaps/blob/main/README.md#java-microservices-roadmap)
+
+## Example of Complete Code
+
+### /pom.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.0.0</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+
+    <groupId>com.in28minutes.springboot.rest.example</groupId>
+    <artifactId>spring-boot-2-rest-service-basic</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>spring-boot-2-rest-service</name>
+    <description>Spring Boot 2 and REST - Example Project</description>
+
+    <properties>
+        <java.version>25</java.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
+```
+
+---
+
+### /src/main/java/com/in28minutes/springboot/rest/example/SpringBoot2RestServiceApplication.java
+
+```java
+package com.in28minutes.springboot.rest.example;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class SpringBoot2RestServiceApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(SpringBoot2RestServiceApplication.class, args);
+    }
+}
+```
+
+---
+
+### /src/main/java/com/in28minutes/springboot/rest/example/student/Student.java
+
+```java
+package com.in28minutes.springboot.rest.example.student;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@Entity
+public class Student {
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    private String name;
+
+    private String passportNumber;
+
+}
+
+```
+
+---
+
+### /src/main/java/com/in28minutes/springboot/rest/example/student/StudentNotFoundException.java
+
+```java
+package com.in28minutes.springboot.rest.example.student;
+
+public class StudentNotFoundException extends RuntimeException {
+
+    public StudentNotFoundException(String exception) {
+        super(exception);
+    }
+
+}
+```
+
+---
+
+### /src/main/java/com/in28minutes/springboot/rest/example/student/StudentRepository.java
+
+```java
+package com.in28minutes.springboot.rest.example.student;
+
+import org.jspecify.annotations.NonNull;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface StudentRepository extends JpaRepository<@NonNull Student, @NonNull Long> {
+
+}
+
+```
+
+---
+
+### /src/main/java/com/in28minutes/springboot/rest/example/student/StudentResource.java
+
+```java
+package com.in28minutes.springboot.rest.example.student;
+
+import org.jspecify.annotations.NonNull;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import java.net.URI;
+import java.util.List;
+import java.util.Optional;
+
+@RestController
+public class StudentResource {
+
+    private final StudentRepository studentRepository;
+
+    public StudentResource(StudentRepository studentRepository) {
+        this.studentRepository = studentRepository;
+    }
+
+    @GetMapping("/students")
+    public List<Student> retrieveAllStudents() {
+        return studentRepository.findAll();
+    }
+
+    @GetMapping("/students/{id}")
+    public Student retrieveStudent(@PathVariable long id) {
+        Optional<Student> student = studentRepository.findById(id);
+
+        if (student.isEmpty())
+            throw new StudentNotFoundException("id-" + id);
+
+        return student.get();
+    }
+
+    @DeleteMapping("/students/{id}")
+    public void deleteStudent(@PathVariable long id) {
+        studentRepository.deleteById(id);
+    }
+
+    @PostMapping("/students")
+    public ResponseEntity<@NonNull Student> createStudent(@RequestBody Student student) {
+        var savedStudent = studentRepository.save(student);
+
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(savedStudent.getId())
+                .toUri();
+
+        return ResponseEntity.created(location)
+                .build();
+
+    }
+
+    @PutMapping("/students/{id}")
+    public ResponseEntity<@NonNull Student> updateStudent(@RequestBody Student student,
+                                                          @PathVariable long id) {
+
+        Optional<Student> studentDetails = studentRepository.findById(id);
+
+        if (studentDetails.isEmpty())
+            return ResponseEntity.notFound().build();
+
+        student.setId(id);
+        studentRepository.save(student);
+        return ResponseEntity.noContent()
+                .build();
+    }
+}
+
+```
+
+---
+
+### /src/main/resources/application.properties
+
+```properties
+# Enabling H2 Console
+spring.h2.console.enabled=true
+#Turn Statistics on
+spring.jpa.properties.hibernate.generate_statistics=true
+logging.level.org.hibernate.stat=debug
+# Show all queries
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+logging.level.org.hibernate.type=trace
+spring.datasource.url=jdbc:h2:mem:testdb
+spring.data.jpa.repositories.bootstrap-mode=default
+```
+
+---
+
+### /src/main/resources/data.sql
+
+```
+insert into student
+values(10001,'Ranga', 'E1234567');
+
+insert into student
+values(10002,'Ravi', 'A1234568');
+```
+
+---
+
+### /src/main/resources/schema.sql
+
+```
+create table student
+(
+   id integer not null,
+   name varchar(255) not null,
+   passport_number varchar(255) not null,
+   primary key(id)
+);
+```
+
+---
+
+### /src/test/java/com/in28minutes/springboot/rest/example/SpringBoot2RestServiceApplicationTests.java
+
+```java
+package com.in28minutes.springboot.rest.example;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+
+@ExtendWith(SpringExtension.class)
+@SpringBootTest
+public class SpringBoot2RestServiceApplicationTests {
+
+    @Test
+    public void contextLoads() {
+    }
+
+}
+```
+
+---

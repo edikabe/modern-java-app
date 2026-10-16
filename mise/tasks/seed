@@ -1,0 +1,46 @@
+#!/bin/sh
+#MISE description="Créer 10 étudiants via l’API (démarrée au préalable)"
+set -eu
+
+# Chaque exécution ajoute 10 étudiants ; les données existantes sont conservées.
+base_url=${1:-http://localhost:8080}
+base_url=${base_url%/}
+
+if ! command -v curl >/dev/null 2>&1; then
+    printf 'Erreur : curl doit être installé.\n' >&2
+    exit 1
+fi
+
+count=0
+while IFS='|' read -r name passport; do
+    printf 'Création de %s... ' "$name"
+    if ! status=$(curl --silent --show-error --fail \
+        --connect-timeout 5 --max-time 15 \
+        --output /dev/null --write-out '%{http_code}' \
+        --request POST \
+        --header 'Content-Type: application/json' \
+        --data "{\"name\":\"$name\",\"passportNumber\":\"$passport\"}" \
+        "$base_url/students"); then
+        printf '\nÉchec après %s création(s). Vérifie que l’API est démarrée sur %s.\n' "$count" "$base_url" >&2
+        exit 1
+    fi
+    if [ "$status" != '201' ]; then
+        printf '\nRéponse inattendue : HTTP %s (201 attendu). Arrêt du script.\n' "$status" >&2
+        exit 1
+    fi
+    count=$((count + 1))
+    printf 'OK\n'
+done <<'STUDENTS'
+Alice Martin|FR1000001
+Hugo Bernard|FR1000002
+Emma Dubois|FR1000003
+Louis Thomas|FR1000004
+Jade Robert|FR1000005
+Arthur Richard|FR1000006
+Louise Petit|FR1000007
+Gabriel Durand|FR1000008
+Chloe Leroy|FR1000009
+Jules Moreau|FR1000010
+STUDENTS
+
+printf '%s étudiants créés sur %s.\n' "$count" "$base_url"

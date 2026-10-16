@@ -1,0 +1,43 @@
+[tools]
+java = "25"
+maven = "latest"
+
+[tasks.compile]
+description = "Compiler les sources de l’application"
+run = "mvn compile"
+
+[tasks.test]
+description = "Exécuter les tests unitaires"
+run = "mvn test"
+
+[tasks.build]
+description = "Construire le JAR de l’application avec les tests"
+run = "mvn package"
+
+[tasks.verify]
+description = "Exécuter le cycle Maven complet jusqu’à verify"
+run = "mvn verify"
+
+[tasks.clean]
+description = "Supprimer les fichiers générés dans target"
+run = "mvn clean"
+
+[tasks.rebuild]
+description = "Nettoyer puis reconstruire le JAR avec les tests"
+run = "mvn clean package"
+
+[tasks.start]
+description = "Démarrer l’application en local avec Spring Boot"
+run = "mvn spring-boot:run"
+
+[tasks."docker:start"]
+description = "Construire l’image Docker et démarrer l’application via Compose"
+run = "docker compose up --build -d"
+
+[tasks."docker:stop"]
+description = "Arrêter et supprimer les conteneurs de l’application via Compose"
+run = "docker compose down"
+
+[tasks.deps]
+description = "Afficher l’arbre des dépendances Maven"
+run = "mvn dependency:tree"
