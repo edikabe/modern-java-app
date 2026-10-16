@@ -3,6 +3,22 @@
 J'ai chopé un repo exemple de projet Spring sur lequel j'ai mis en place toute une chaine de tooling moderne.
 Peu importe que ce soit du Java ou autre...
 
+## Exécuter les tests
+
+Depuis la racine du projet, avec les outils Java et Maven gérés par `mise` :
+
+| Commande                    | Action                                      |
+| --------------------------- | ------------------------------------------- |
+| `mise run test`             | Exécuter tous les tests                     |
+| `mise run test:unit`        | Exécuter uniquement les tests unitaires     |
+| `mise run test:integration` | Exécuter uniquement les tests d’intégration |
+
+Les tests d’intégration portent l’annotation JUnit `@Tag("integration")` au niveau de la classe. Les tests unitaires ne portent pas ce tag. Ajouter ce tag à toute nouvelle classe de tests démarrant un contexte Spring ou utilisant une base de données ou un serveur HTTP.
+
+Les trois classes actuelles (`SpringBoot2RestServiceApplicationTests`, `StudentPassportTests` et `CourseTests`) sont des tests d’intégration : `test:unit` n’exécute donc aucun test pour le moment. Les filtres sélectionnent les tests à exécuter, mais Maven compile toujours l’ensemble des sources de test.
+
+`mise run build`, `mise run rebuild` et `mise run verify` continuent d’exécuter tous les tests par défaut. Pour cibler une classe : `mise exec -- mvn -Dtest=CourseTests test`.
+
 ## Lancer avec Docker
 
 Prérequis : Docker avec le plugin Docker Compose. Aucun JDK ni Maven local n’est nécessaire.

@@ -23,21 +23,23 @@
 
 Privilégier les tâches existantes plutôt que dupliquer les commandes :
 
-| Commande                | Action                                                     |
-| ----------------------- | ---------------------------------------------------------- |
-| `mise install`          | Installer les outils déclarés                              |
-| `mise tasks ls`         | Lister les tâches disponibles                              |
-| `mise run compile`      | Compiler les sources                                       |
-| `mise run test`         | Exécuter les tests Maven                                   |
-| `mise run build`        | Construire le JAR avec les tests (`mvn package`)           |
-| `mise run verify`       | Exécuter le cycle Maven jusqu’à `verify`                   |
-| `mise run clean`        | Supprimer `target`                                         |
-| `mise run rebuild`      | Nettoyer puis reconstruire avec les tests                  |
-| `mise run start`        | Démarrer Spring Boot en local                              |
-| `mise run deps`         | Afficher l’arbre des dépendances                           |
-| `mise run seed`         | Créer 10 étudiants via l’API déjà démarrée                 |
-| `mise run docker:start` | Construire l’image et démarrer via Compose en arrière-plan |
-| `mise run docker:stop`  | Arrêter et supprimer les conteneurs Compose du projet      |
+| Commande                    | Action                                                     |
+| --------------------------- | ---------------------------------------------------------- |
+| `mise install`              | Installer les outils déclarés                              |
+| `mise tasks ls`             | Lister les tâches disponibles                              |
+| `mise run compile`          | Compiler les sources                                       |
+| `mise run test`             | Exécuter tous les tests (unitaires et intégration)         |
+| `mise run test:unit`        | Exécuter uniquement les tests unitaires                    |
+| `mise run test:integration` | Exécuter uniquement les tests d’intégration                |
+| `mise run build`            | Construire le JAR avec les tests (`mvn package`)           |
+| `mise run verify`           | Exécuter le cycle Maven jusqu’à `verify`                   |
+| `mise run clean`            | Supprimer `target`                                         |
+| `mise run rebuild`          | Nettoyer puis reconstruire avec les tests                  |
+| `mise run start`            | Démarrer Spring Boot en local                              |
+| `mise run deps`             | Afficher l’arbre des dépendances                           |
+| `mise run seed`             | Créer 10 étudiants via l’API déjà démarrée                 |
+| `mise run docker:start`     | Construire l’image et démarrer via Compose en arrière-plan |
+| `mise run docker:stop`      | Arrêter et supprimer les conteneurs Compose du projet      |
 
 La tâche `seed` se trouve dans `mise/tasks/seed`, nécessite `curl` et accepte une URL en argument : `mise run seed -- http://localhost:8080`. Elle utilise des passeports fixes : une nouvelle exécution sur une base déjà alimentée peut échouer avec HTTP 409. Elle ne supprime pas les données existantes.
 
@@ -62,6 +64,8 @@ La tâche `seed` se trouve dans `mise/tasks/seed`, nécessite `curl` et accepte 
 - Préserver les modifications utilisateur ; ne pas créer de commit ni de branche sans demande.
 - Ne pas modifier les artefacts générés dans `target/` ni ajouter de secrets au dépôt ou aux images.
 - Ajouter ou adapter les tests lors d’un changement de comportement, notamment pour les contraintes de données et les statuts HTTP.
+- Annoter les classes de tests d’intégration avec `@Tag("integration")` (contexte Spring, base de données ou serveur HTTP). Les tests unitaires ne portent pas ce tag. Les trois classes actuelles sont des tests d’intégration ; la tâche `test:unit` n’exécute donc aucun test tant qu’aucun test unitaire n’est ajouté.
+- Les tâches `test:unit` et `test:integration` filtrent les tags JUnit via Maven Surefire (`excludedGroups` / `groups`). `test`, `build`, `rebuild` et `verify` conservent tous les tests par défaut.
 - Pour un test ciblé : `mise exec -- mvn -Dtest=StudentPassportTests test`. Pour une validation complète : `mise run verify`.
 - Après modification de `mise.toml`, vérifier avec `mise tasks ls`. Après modification de Compose, utiliser `docker compose config --quiet` ; cela ne valide pas la construction ni le démarrage de l’image.
 - Ne pas lancer automatiquement les tâches longues de serveur, le seed ou les arrêts de services pour valider une simple modification documentaire.

@@ -7,8 +7,16 @@ description = "Compiler les sources de l’application"
 run = "mvn compile"
 
 [tasks.test]
-description = "Exécuter les tests unitaires"
+description = "Exécuter tous les tests (unitaires et intégration)"
 run = "mvn test"
+
+[tasks."test:unit"]
+description = "Exécuter uniquement les tests unitaires"
+run = "mvn -DexcludedGroups=integration test"
+
+[tasks."test:integration"]
+description = "Exécuter uniquement les tests d’intégration"
+run = "mvn -Dgroups=integration test"
 
 [tasks.build]
 description = "Construire le JAR de l’application avec les tests"
