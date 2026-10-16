@@ -43,6 +43,14 @@ Privilégier les tâches existantes plutôt que dupliquer les commandes :
 
 La tâche `seed` se trouve dans `mise/tasks/seed`, nécessite `curl` et accepte une URL en argument : `mise run seed -- http://localhost:8080`. Elle utilise des passeports fixes : une nouvelle exécution sur une base déjà alimentée peut échouer avec HTTP 409. Elle ne supprime pas les données existantes.
 
+## GitHub Actions
+
+- `.github/workflows/ci.yml` exécute `mvn -B -ntp verify` à chaque push sur toutes les branches, sans exécution sur les tags ni exécution supplémentaire sur les événements de pull request.
+- Le job utilise `ubuntu-24.04`, Java 25 (Temurin via `actions/setup-java`) et Maven préinstallé ; il exécute tous les tests et construit le JAR. Ne pas désactiver les tests ni ajouter de build Docker ou de déploiement sans demande.
+- Conserver le cache Maven, les rapports Surefire / JUnit téléchargeables même en cas d’échec et le JAR après succès (artefacts conservés sept jours).
+- Limiter les permissions à `contents: read`. Aucun secret applicatif ni service de base externe n’est requis.
+- Après modification, vérifier le YAML et utiliser `actionlint` s’il est disponible ; une validation locale ne prouve pas l’exécution sur le runner GitHub.
+
 ## Docker et Colima
 
 - Environnement macOS avec **Colima**, pas de dépendance obligatoire à Docker Desktop.

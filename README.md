@@ -19,6 +19,20 @@ Les trois classes actuelles (`SpringBoot2RestServiceApplicationTests`, `StudentP
 
 `mise run build`, `mise run rebuild` et `mise run verify` continuent d’exécuter tous les tests par défaut. Pour cibler une classe : `mise exec -- mvn -Dtest=CourseTests test`.
 
+## Intégration continue GitHub Actions
+
+Le fichier `.github/workflows/ci.yml` déclenche le workflow **Java CI** à chaque push sur **toutes les branches**, y compris la branche principale. Les tags et les événements de pull request ne déclenchent pas d’exécution supplémentaire.
+
+Le job `verify` utilise un runner GitHub `ubuntu-24.04`, Java 25 (Temurin) et Maven préinstallé sur le runner pour exécuter `mvn -B -ntp verify`, l’équivalent CI de `mise run verify` : compilation, tous les tests (unitaires et intégration) et construction du JAR Spring Boot. Un échec des tests ou du build fait échouer le job.
+
+- Les dépendances Maven sont mises en cache pour accélérer les exécutions suivantes.
+- Les rapports Surefire, dont les XML JUnit, sont téléchargeables dans l’artefact `test-reports`, même en cas d’échec des tests.
+- Après un build réussi, le JAR `target/*.jar` est téléchargeable dans l’artefact `application-jar`.
+- Les artefacts sont conservés pendant sept jours et accessibles depuis l’exécution du workflow dans l’onglet **Actions**.
+- Aucun build d’image Docker, aucune publication ni aucun déploiement n’est effectué.
+
+GitHub Actions doit être activé sur le dépôt et les runners hébergés GitHub autorisés. Aucun secret applicatif ni service de base de données externe n’est nécessaire : les tests utilisent H2 en mémoire. Les permissions du workflow sont limitées à la lecture du contenu du dépôt.
+
 ## Lancer avec Docker
 
 Prérequis : Docker avec le plugin Docker Compose. Aucun JDK ni Maven local n’est nécessaire.
